@@ -18,8 +18,107 @@
 using namespace cv;
 using namespace std;
 
+void readImages(vector<Mat>& images)//加引用可节省50%的内存消耗
+{
+	int numImages = 2;
+	static const char* filenames[] =
+	{
+	   "C:\\Users\\duanshipeng\\Pictures\\lenaright.png",
+	   "C:\\Users\\duanshipeng\\Pictures\\lenaleft.png",
+	};
+
+	for (int i = 0; i < numImages; i++)
+	{
+		Mat im = imread(filenames[i]);
+		images.push_back(im);
+	}
+
+}
+
+
 int main()
 { 
+	//创建模糊训练集
+	//Mat lena; 
+	//string filename_lena = "C:\\Users\\duanshipeng\\Pictures\\lenaGood.png";
+	//lena = imread(filename_lena, IMREAD_UNCHANGED);
+	//Mat lena_left= lena; Mat lena_right= lena;
+	////Rect region(0, 0, 203, 406);
+	//Rect region(203, 0, 203, 406);
+	//GaussianBlur(lena_right(region), lena_right(region), Size(0, 0), 4);
+	//imshow("lena", lena_right);
+	//waitKey();
+	//imwrite("C:\\Users\\duanshipeng\\Pictures\\lenaleft.png", lena_right);
+
+	//Rect region2(203, 0, 203, 406);
+	//GaussianBlur(lena_left(region2), lena_left(region2), Size(0, 0), 4);
+	//imshow("lena", lena_left);
+	//waitKey();
+
+	vector<Mat> images;
+
+	//读取图片
+	readImages(images);
+
+	//对齐图片
+	Ptr<AlignMTB> alignMTB = createAlignMTB();
+	alignMTB->process(images, images);
+
+	//曝光合成（Mertens是该论文的作者）被OpenCV集成为函数了
+	Mat Fusion;
+	Ptr<MergeMertens> mergeMertens = createMergeMertens();
+	mergeMertens->process(images, Fusion);
+
+	imshow("合成图像", Fusion);
+
+	waitKey();
+
+
+	//Mat image_left, image_right;
+	//// Usage： <cmd> <file_in> <file_out>
+	////读取原始图像
+	//string filename_left = "C:\\Users\\duanshipeng\\Pictures\\left.png";
+	//string filename_right = "C:\\Users\\duanshipeng\\Pictures\\right.png";
+	//image_left = imread(filename_left, IMREAD_UNCHANGED);
+	//image_right = imread(filename_right, IMREAD_UNCHANGED);
+	//if (image_left.empty() || image_right.empty()) {
+	//	//检查是否读取图像
+	//	cout << "Error! Input image cannot be read...\n";
+	//	return -1;
+	//}
+	////创建两个具有图像名称的窗口
+	//namedWindow(filename_left, CV_WINDOW_NORMAL);//CV_WINDOW_NORMAL就是0
+	//namedWindow(filename_right, CV_WINDOW_NORMAL);//CV_WINDOW_NORMAL就是0
+	////在之前创建的窗口中显示图片
+	//imshow(filename_left, image_left);
+	//imshow(filename_right, image_right);
+	//waitKey(); // Wait for key press
+
+
+
+
+	//写入图像
+	//imwrite(argv[2], in_image);
+
+	//bool isShowImg = 1;
+	//cvalgorithm CVA;
+
+	//Mat imageSource = CVA.byte2mat(ImgBuf, 2448, 2048, 24);
+	//Mat imageSource = CVA.byte2mat(ImgBuf, 2448, 2048, 24);
+
+	//显示图片
+	//if (isShowImg)
+	//{
+	//	namedWindow("img", CV_WINDOW_NORMAL);//CV_WINDOW_NORMAL就是0
+	//	imshow("img", imageSource);
+	//	waitKey();
+	//}
+
+
+	////对焦清晰度评价
+	//double meanFocals =  CVA.valueFocals(imageSource);
+
+	/*
 	int cameraExposureTime = 500;//相机曝光时间ms
 	//平均1s1次
 	int countMax = 3600;//拍摄最大数量
@@ -233,6 +332,7 @@ int main()
 	std::cout << "串口成功数量\t" << getTrueSignal << endl;
 	std::cout << "图像变焦成功数量\t" << isImgChange << endl;
 
+	*/
 
 	//读取模块Firmware 版本(未实现)
 	//输入：无
