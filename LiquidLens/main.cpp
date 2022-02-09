@@ -19,7 +19,7 @@ using namespace cv;
 using namespace std;
 
 int main()
-{
+{ 
 	int cameraExposureTime = 500;//相机曝光时间ms
 	//平均1s1次
 	int countMax = 3600;//拍摄最大数量
