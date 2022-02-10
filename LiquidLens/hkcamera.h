@@ -26,6 +26,8 @@ public:
 	int GetImg();
 	int SetHKCamera();
 	int ExposureTime = 500000;
+	double t_takeimg;
+	double t_transimg;
 private:
 
 	int nDataSize = 15040512;

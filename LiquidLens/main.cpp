@@ -55,73 +55,10 @@ int main()
 	//imshow("lena", lena_left);
 	//waitKey();
 
-	vector<Mat> images;
-
-	//读取图片
-	readImages(images);
-
-	//对齐图片
-	Ptr<AlignMTB> alignMTB = createAlignMTB();
-	alignMTB->process(images, images);
-
-	//曝光合成（Mertens是该论文的作者）被OpenCV集成为函数了
-	Mat Fusion;
-	Ptr<MergeMertens> mergeMertens = createMergeMertens();
-	mergeMertens->process(images, Fusion);
-
-	imshow("合成图像", Fusion);
-
-	waitKey();
-
-
-	//Mat image_left, image_right;
-	//// Usage： <cmd> <file_in> <file_out>
-	////读取原始图像
-	//string filename_left = "C:\\Users\\duanshipeng\\Pictures\\left.png";
-	//string filename_right = "C:\\Users\\duanshipeng\\Pictures\\right.png";
-	//image_left = imread(filename_left, IMREAD_UNCHANGED);
-	//image_right = imread(filename_right, IMREAD_UNCHANGED);
-	//if (image_left.empty() || image_right.empty()) {
-	//	//检查是否读取图像
-	//	cout << "Error! Input image cannot be read...\n";
-	//	return -1;
-	//}
-	////创建两个具有图像名称的窗口
-	//namedWindow(filename_left, CV_WINDOW_NORMAL);//CV_WINDOW_NORMAL就是0
-	//namedWindow(filename_right, CV_WINDOW_NORMAL);//CV_WINDOW_NORMAL就是0
-	////在之前创建的窗口中显示图片
-	//imshow(filename_left, image_left);
-	//imshow(filename_right, image_right);
-	//waitKey(); // Wait for key press
-
-
-
-
-	//写入图像
-	//imwrite(argv[2], in_image);
-
-	//bool isShowImg = 1;
-	//cvalgorithm CVA;
-
-	//Mat imageSource = CVA.byte2mat(ImgBuf, 2448, 2048, 24);
-	//Mat imageSource = CVA.byte2mat(ImgBuf, 2448, 2048, 24);
-
-	//显示图片
-	//if (isShowImg)
-	//{
-	//	namedWindow("img", CV_WINDOW_NORMAL);//CV_WINDOW_NORMAL就是0
-	//	imshow("img", imageSource);
-	//	waitKey();
-	//}
-
-
-	////对焦清晰度评价
-	//double meanFocals =  CVA.valueFocals(imageSource);
-
-	/*
 	int cameraExposureTime = 500;//相机曝光时间ms
-	//平均1s1次
-	int countMax = 3600;//拍摄最大数量
+	//平均1s1次 1h 3600
+	int countMax = 10;//拍摄最大数量
+	double temp = 45;//对焦位置
 	bool isShowImg = 0;
 
 	//创建镜头类
@@ -155,17 +92,18 @@ int main()
 	cvalgorithm CVA;
 
 
+
 	LL.SetFocalPlace(100.0);
 	int  count = 0;
 	//100ms一小时36000,50ms五小时360000
 	//1050ms一小时3428
-	
+
 	int sendTrueSignal = 0;//镜头发送信号判断
 	int getTrueSignal = 0;//镜头返回信号判断
 
 	vector<double> allFocalsPlace(countMax, 0);//对焦位置容器
 	vector<bool> isOk;//镜头串口返回信号是否正确容器
-	vector<double> valueFocal(countMax,0);//对焦清晰度容器
+	vector<double> valueFocal(countMax, 0);//对焦清晰度容器
 	vector<double> t_response1(countMax, 0);//串口返回一bit数据时间容器
 	vector<double> t_response2(countMax, 0);
 	vector<double> t_response3(countMax, 0);
@@ -173,7 +111,11 @@ int main()
 	vector<double> t_response5(countMax, 0);
 	vector<double> t_response6(countMax, 0);
 	vector<double> t_send2get(countMax, 0);//镜头调节时间容器
-	vector<double> t_allGetImg(countMax, 0);//相机拍摄图片时间容器
+
+	vector<double> t_allTakeImg(countMax, 0);//相机拍摄图片时间容器
+	vector<double> t_allSaveImg(countMax, 0);//相机存储图片时间容器
+
+	vector<double> t_allGetImg(countMax, 0);//相机获取图片时间容器
 	vector<double> t_allImgProcessing(countMax, 0);//图片处理时间容器
 	vector<double> t_onceTime(countMax, 0);//一次拍摄总共时间容器
 
@@ -182,19 +124,20 @@ int main()
 		std::cout << "error:相机打开失败!" << endl;
 		return 0;
 	}
-	HKC.ExposureTime = cameraExposureTime*1000;
+	HKC.ExposureTime = cameraExposureTime * 1000;
 	if (HKC.SetHKCamera() != MV_OK)
 	{
 		std::cout << "error:相机初始化失败!" << endl;
 		return 0;
 	}
-
+	
 	while (count < countMax)
 	{
 		//double temp = rand()%101;
-		double temp = (count % 2 == 0) ? 100 : 0;//对焦位置
+		//double temp = (count % 2 == 0) ? 100 : 0;//对焦位置
+		temp += 1;
 		//double temp = 41.0;
-		allFocalsPlace[count]=temp;
+		allFocalsPlace[count] = temp;
 
 		//时间：镜头变焦开始
 		time_t t_SetFocalPlace = clock();
@@ -235,17 +178,19 @@ int main()
 		t_response4[count] = LL.time4;
 		t_response5[count] = LL.time5;
 		t_response6[count] = LL.time6;
-		
-		
-		if (HKC.GetImg() != MV_OK) 
-		{ 
-			std::cout << "error:相机拍摄失败！" << endl; 
-			break; 
+
+
+		if (HKC.GetImg() != MV_OK)
+		{
+			std::cout << "error:相机拍摄失败！" << endl;
+			break;
 		}
+		t_allTakeImg[count] = HKC.t_takeimg;
+		t_allSaveImg[count] = HKC.t_transimg;
 
 		//时间：拍摄图片结束
 		time_t t_GetImg = clock();
-		t_allGetImg[count]= (double)(t_GetImg - t_GettFocalPlace) / CLOCKS_PER_SEC;
+		t_allGetImg[count] = (double)(t_GetImg - t_GettFocalPlace) / CLOCKS_PER_SEC;
 
 		//图片buffer
 		unsigned char* ImgBuf = HKC.GetImgBuf();
@@ -254,7 +199,7 @@ int main()
 		//MV_FRAME_OUT_INFO_EX ImgInfo = HKC.getImageInfo();
 
 		//图片转换成Mat格式方便opencv处理
-		Mat imageSource = CVA.byte2mat(ImgBuf, 2448, 2048, 24);
+		Mat imageSource = CVA.byte2mat(ImgBuf, 2448, 2048, 24).clone();
 
 		//显示图片
 		if (isShowImg)
@@ -263,31 +208,37 @@ int main()
 			imshow("img", imageSource);
 			waitKey();
 		}
-
+		CVA.images.push_back(imageSource);
 
 		//对焦清晰度评价
-		valueFocal[count]= CVA.valueFocals(imageSource);
+		valueFocal[count] = CVA.valueFocals(imageSource);
 
 		//时间 图像处理结束
 		time_t t_ImgProcessing = clock();
-		t_allImgProcessing[count] = (double)(t_ImgProcessing-t_GetImg ) / CLOCKS_PER_SEC;//图像处理时间
+		t_allImgProcessing[count] = (double)(t_ImgProcessing - t_GetImg) / CLOCKS_PER_SEC;//图像处理时间
 		t_onceTime[count] = (double)(t_ImgProcessing - t_SetFocalPlace) / CLOCKS_PER_SEC;//一次照片变焦+拍摄时间
 		count++;
 
 		//删除创建指针
 		if (ImgBuf) { delete ImgBuf; };
 	}
-	
+
 	if (HKC.CloseHKCamera() != MV_OK)
 	{
 		std::cout << "error:相机关闭失败！" << endl;
 		return 0;
 	}
 
+	//图像融合计算
+	CVA.fusionImg();
+	namedWindow("fusionImg", CV_WINDOW_NORMAL);//CV_WINDOW_NORMAL就是0
+	imshow("fusionImg", CVA.Fusion);
+	waitKey();
+
 	//写txt文件 统计出错结果 与时间
 	ofstream OutFile("ImgAlgorithm.txt");
 
-	OutFile << "对焦位置（0-100）" << "\t" << "串口返回" << "\t" << "图像处理返回" << "\t" << "与上一张清晰度对比" << "\t" << "对焦清晰度返回" << "\t" << "返回时间1" << "\t" << "返回时间2" << "\t" << "返回时间3" << "\t" << "返回时间4" << "\t" << "返回时间5" << "\t" << "返回时间6" << "\t" << "发送到返回时间" << "\t" << "拍照时间"<< "\t" << "图像处理时间"<<"\t"<<"一次完整对焦拍照时间" << endl;
+	OutFile << "对焦位置（0-100）" << "\t" << "串口返回" << "\t" << "图像处理返回" << "\t" << "与上一张清晰度对比" << "\t" << "对焦清晰度返回" << "\t" << "返回时间1" << "\t" << "返回时间2" << "\t" << "返回时间3" << "\t" << "返回时间4" << "\t" << "返回时间5" << "\t" << "返回时间6" << "\t" << "发送到返回时间" << "\t" << "拍摄时间" << "\t" << "存图时间" << "\t" << "总拍照获取图像时间" << "\t" << "图像处理时间" << "\t" << "一次完整对焦拍照时间" << endl;
 
 	int isImgChange = 0;
 	for (int i = 0; i < allFocalsPlace.size(); i++)
@@ -298,10 +249,10 @@ int main()
 		{
 			//double a = abs(valueFocal[i] - valueFocal[i - 1]);
 			//double b = 0.7 * (*max_element(valueFocal.begin(), valueFocal.end()) - *min_element(valueFocal.begin(), valueFocal.end()));
-			if (abs(valueFocal[i] - valueFocal[i - 1]) > 0.8*(*max_element(valueFocal.begin(), valueFocal.end())- *min_element(valueFocal.begin(), valueFocal.end())))
+			if (abs(valueFocal[i] - valueFocal[i - 1]) > 0.8 * abs(valueFocal[1] - valueFocal[0]))
 			{
 				isImgChange++;
-				OutFile << 1 << "\t";	
+				OutFile << 1 << "\t";
 			}
 			else
 			{
@@ -317,7 +268,7 @@ int main()
 		}
 		OutFile << valueFocal[i] << "\t";
 
-		OutFile << t_response1[i] << "\t" << t_response2[i] << "\t" << t_response3[i] << "\t" << t_response4[i] << "\t" << t_response5[i] << "\t" << t_response6[i] << "\t" << t_send2get[i] << "\t" << t_allGetImg[i] <<"\t"<< t_allImgProcessing[i] << "\t" << t_onceTime [i]<<endl;
+		OutFile << t_response1[i] << "\t" << t_response2[i] << "\t" << t_response3[i] << "\t" << t_response4[i] << "\t" << t_response5[i] << "\t" << t_response6[i] << "\t" << t_send2get[i] << "\t" << t_allTakeImg[i] << "\t" << t_allSaveImg[i] << "\t" << t_allGetImg[i] << "\t" << t_allImgProcessing[i] << "\t" << t_onceTime[i] << endl;
 
 
 	}
@@ -326,13 +277,12 @@ int main()
 	OutFile << "串口发送成功\t" << sendTrueSignal << endl;
 	OutFile << "串口返回成功\t" << getTrueSignal << endl;
 	OutFile << "图像变焦成功数量\t" << isImgChange << endl;
-	OutFile << "相机曝光时间\t" << cameraExposureTime <<"ms"<< endl;
+	OutFile << "相机曝光时间\t" << cameraExposureTime << "ms" << endl;
 	OutFile.close();
 
 	std::cout << "串口成功数量\t" << getTrueSignal << endl;
 	std::cout << "图像变焦成功数量\t" << isImgChange << endl;
 
-	*/
 
 	//读取模块Firmware 版本(未实现)
 	//输入：无
@@ -351,6 +301,9 @@ int main()
 
 	//控制相机SDK进行拍照存图
 
+
+
+	
 
 	return 0;
 }

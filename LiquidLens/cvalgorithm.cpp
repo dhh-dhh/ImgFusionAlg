@@ -7,12 +7,39 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgproc/types_c.h>
 #include "cvalgorithm.h"
+#include <vector>
+#include <string>
 
 using namespace std;
 using namespace cv;
 
 cvalgorithm::cvalgorithm() {};
 cvalgorithm::~cvalgorithm() {};
+
+void cvalgorithm::fusionImg()
+{
+	//对齐图片
+	Ptr<AlignMTB> alignMTB = createAlignMTB();
+	alignMTB->process(images, images);
+
+	Ptr<MergeMertens> mergeMertens = createMergeMertens();
+	mergeMertens->process(images, Fusion);
+}
+
+
+void cvalgorithm::readImages()//加引用可节省50%的内存消耗
+{
+
+
+	for (int i = 0; i < numImages; i++)
+	{
+		Mat im = imread(filenames[i]);
+		images.push_back(im);
+	}
+
+}
+
+
 
 double cvalgorithm::valueFocals(Mat img)
 {
