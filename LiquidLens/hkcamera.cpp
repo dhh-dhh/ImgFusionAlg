@@ -30,7 +30,8 @@ int HKCamera::SetHKCamera()
 {
 	//设置曝光时间
 	nRet = MV_CC_SetFloatValue(handle, "ExposureTime", ExposureTime);
-
+	//设置增益
+	nRet = MV_CC_SetFloatValue(handle, "Gain", Gain);
 	return nRet;
 }
 

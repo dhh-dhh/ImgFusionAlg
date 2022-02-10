@@ -26,6 +26,7 @@ public:
 	int GetImg();
 	int SetHKCamera();
 	int ExposureTime = 500000;
+	double Gain = 16.0;
 	double t_takeimg;
 	double t_transimg;
 private:

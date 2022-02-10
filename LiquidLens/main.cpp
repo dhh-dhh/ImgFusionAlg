@@ -18,53 +18,31 @@
 using namespace cv;
 using namespace std;
 
-void readImages(vector<Mat>& images)//加引用可节省50%的内存消耗
-{
-	int numImages = 2;
-	static const char* filenames[] =
-	{
-	   "C:\\Users\\duanshipeng\\Pictures\\lenaright.png",
-	   "C:\\Users\\duanshipeng\\Pictures\\lenaleft.png",
-	};
-
-	for (int i = 0; i < numImages; i++)
-	{
-		Mat im = imread(filenames[i]);
-		images.push_back(im);
-	}
-
-}
 
 
 int main()
 { 
-	//创建模糊训练集
-	//Mat lena; 
-	//string filename_lena = "C:\\Users\\duanshipeng\\Pictures\\lenaGood.png";
-	//lena = imread(filename_lena, IMREAD_UNCHANGED);
-	//Mat lena_left= lena; Mat lena_right= lena;
-	////Rect region(0, 0, 203, 406);
-	//Rect region(203, 0, 203, 406);
-	//GaussianBlur(lena_right(region), lena_right(region), Size(0, 0), 4);
-	//imshow("lena", lena_right);
-	//waitKey();
-	//imwrite("C:\\Users\\duanshipeng\\Pictures\\lenaleft.png", lena_right);
 
-	//Rect region2(203, 0, 203, 406);
-	//GaussianBlur(lena_left(region2), lena_left(region2), Size(0, 0), 4);
-	//imshow("lena", lena_left);
-	//waitKey();
+	double cameraExposureTime = 0.5;//相机曝光时间ms
+	double gain_db = 16.9807;//增益 0-16.9807
 
-	int cameraExposureTime = 500;//相机曝光时间ms
 	//平均1s1次 1h 3600
-	int countMax = 10;//拍摄最大数量
-	double temp = 45;//对焦位置
-	bool isShowImg = 0;
+	int countMax = 100; //拍摄最大数量
+	double temp = 51; //对焦位置
+	bool isShowImg = 0; //是否显示图像
+	bool isFusionImg = 0; //是否融合图像
+	bool isSaveImg = 1; //过程图是否存储
+	string filepath = "C:\\Users\\duanshipeng\\Pictures\\ImgFusionFilePath\\";
+	int t_sleep = 50; //串口返回时间后等待时间
+	bool isChangeSleep = 0; //等待时间是否改变  查看线性变化
+	bool isUseLL = 1; //是否使用液体镜头  一般0为相机稳定性测试
+
+
+	//打开镜头串口 COM4
+	int com = 4;
 
 	//创建镜头类
 	LiquidLens LL;
-	//打开镜头串口 COM4
-	int com = 4;
 
 	if (!LL.LLSerialPort.InitPort(com))
 	{
@@ -102,7 +80,7 @@ int main()
 	int getTrueSignal = 0;//镜头返回信号判断
 
 	vector<double> allFocalsPlace(countMax, 0);//对焦位置容器
-	vector<bool> isOk;//镜头串口返回信号是否正确容器
+	vector<bool> isOk(countMax, 0);;//镜头串口返回信号是否正确容器
 	vector<double> valueFocal(countMax, 0);//对焦清晰度容器
 	vector<double> t_response1(countMax, 0);//串口返回一bit数据时间容器
 	vector<double> t_response2(countMax, 0);
@@ -118,6 +96,7 @@ int main()
 	vector<double> t_allGetImg(countMax, 0);//相机获取图片时间容器
 	vector<double> t_allImgProcessing(countMax, 0);//图片处理时间容器
 	vector<double> t_onceTime(countMax, 0);//一次拍摄总共时间容器
+	vector<double> t_sleepTime(countMax, 0);//一次拍摄总共时间容器
 
 	if (HKC.OpenHKCamera() != MV_OK)
 	{
@@ -125,6 +104,7 @@ int main()
 		return 0;
 	}
 	HKC.ExposureTime = cameraExposureTime * 1000;
+	HKC.Gain = gain_db;
 	if (HKC.SetHKCamera() != MV_OK)
 	{
 		std::cout << "error:相机初始化失败!" << endl;
@@ -134,39 +114,52 @@ int main()
 	while (count < countMax)
 	{
 		//double temp = rand()%101;
-		//double temp = (count % 2 == 0) ? 100 : 0;//对焦位置
-		temp += 1;
+		temp = (count % 2 == 0) ? 100 : 0;//对焦位置
+		if (isChangeSleep && count % 2 == 0)
+		{
+			t_sleep++;
+		}
+		
+		//temp += 1;
 		//double temp = 41.0;
 		allFocalsPlace[count] = temp;
 
 		//时间：镜头变焦开始
 		time_t t_SetFocalPlace = clock();
 
-		//设置镜头对焦位置 0-100 double
-		LL.SetFocalPlace(temp);
+		if (isUseLL)
+		{
+			//设置镜头对焦位置 0-100 double
+			LL.SetFocalPlace(temp);
+			if (LL.ChangeFocals())
+			{
+				std::cout << "串口信号发送成功 !" << count << "/" << countMax << std::endl;
+				sendTrueSignal++;
+			}
+			else
+			{
+				std::cout << "error：信号发送失败 !" << std::endl;
+			}
 
-		if (LL.ChangeFocals())
-		{
-			std::cout << "串口信号发送成功 !" << count << "/" << countMax << std::endl;
-			sendTrueSignal++;
-		}
-		else
-		{
-			std::cout << "error：信号发送失败 !" << std::endl;
+			if (LL.IsChangeFocals())
+			{
+				getTrueSignal++;
+				std::cout << "镜头串口返回成功！" << count << "/" << countMax << std::endl;
+				isOk[count]=true;
+			}
+			else
+			{
+				std::cout << "error：镜头串口返回失败 !" << std::endl;
+				isOk[count] = false;
+
+			}
+			
 		}
 
-		if (LL.IsChangeFocals())
-		{
-			getTrueSignal++;
-			std::cout << "镜头串口返回成功！" << count << "/" << countMax << std::endl;
-			isOk.push_back(true);
-		}
-		else
-		{
-			std::cout << "error：镜头串口返回失败 !" << std::endl;
-			isOk.push_back(false);
+		Sleep(t_sleep);
 
-		}
+
+		t_sleepTime[count] = t_sleep;
 		//时间：镜头变焦结束
 		time_t t_GettFocalPlace = clock();
 		t_send2get[count] = (double)(t_GettFocalPlace - t_SetFocalPlace) / CLOCKS_PER_SEC;//镜头变焦时间
@@ -208,7 +201,17 @@ int main()
 			imshow("img", imageSource);
 			waitKey();
 		}
-		CVA.images.push_back(imageSource);
+		if (isFusionImg)
+		{
+			CVA.images.push_back(imageSource);
+		}
+		if (isSaveImg)
+		{
+			string filepath_temp = filepath + "ImgNum" + to_string(10000 + count) + "sleeptime" + to_string(10000 + t_sleep);
+			filepath_temp += ".jpg";
+			imwrite(filepath_temp, imageSource);
+		}
+
 
 		//对焦清晰度评价
 		valueFocal[count] = CVA.valueFocals(imageSource);
@@ -229,21 +232,26 @@ int main()
 		return 0;
 	}
 
-	//图像融合计算
-	CVA.fusionImg();
-	namedWindow("fusionImg", CV_WINDOW_NORMAL);//CV_WINDOW_NORMAL就是0
-	imshow("fusionImg", CVA.Fusion);
-	waitKey();
+	if (isFusionImg)
+	{
+		//图像融合计算
+		CVA.fusionImg();
+		namedWindow("fusionImg", CV_WINDOW_NORMAL);//CV_WINDOW_NORMAL就是0
+		imshow("fusionImg", CVA.Fusion);
+		waitKey();
+	}
+
 
 	//写txt文件 统计出错结果 与时间
 	ofstream OutFile("ImgAlgorithm.txt");
 
-	OutFile << "对焦位置（0-100）" << "\t" << "串口返回" << "\t" << "图像处理返回" << "\t" << "与上一张清晰度对比" << "\t" << "对焦清晰度返回" << "\t" << "返回时间1" << "\t" << "返回时间2" << "\t" << "返回时间3" << "\t" << "返回时间4" << "\t" << "返回时间5" << "\t" << "返回时间6" << "\t" << "发送到返回时间" << "\t" << "拍摄时间" << "\t" << "存图时间" << "\t" << "总拍照获取图像时间" << "\t" << "图像处理时间" << "\t" << "一次完整对焦拍照时间" << endl;
+	OutFile << "对焦位置（0-100）" << "\t"<< "等待时间"<< "\t" << "串口返回" << "\t" << "图像处理返回" << "\t" << "与上一张清晰度对比" << "\t" << "对焦清晰度返回" << "\t" << "返回时间1" << "\t" << "返回时间2" << "\t" << "返回时间3" << "\t" << "返回时间4" << "\t" << "返回时间5" << "\t" << "返回时间6" << "\t" << "发送到返回时间" << "\t" << "拍摄时间" << "\t" << "存图时间" << "\t" << "总拍照获取图像时间" << "\t" << "图像处理时间" << "\t" << "一次完整对焦拍照时间" << endl;
 
 	int isImgChange = 0;
 	for (int i = 0; i < allFocalsPlace.size(); i++)
 	{
 		OutFile << allFocalsPlace[i] << "\t";
+		OutFile << t_sleepTime[i] << "\t";
 		OutFile << (isOk[i] ? 1 : 0) << "\t";
 		if (i > 0)
 		{
