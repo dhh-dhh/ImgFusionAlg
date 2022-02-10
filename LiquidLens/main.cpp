@@ -225,7 +225,7 @@ int main()
 
 	if (HKC.CloseHKCamera() != MV_OK)
 	{
-		std::cout << "error:相机关闭失败！" << endl;
+		std::cout << "error:相机关闭失败！" << endl; 
 		return 0;
 	}
 
