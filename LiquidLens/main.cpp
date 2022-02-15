@@ -23,19 +23,25 @@ using namespace std;
 int main()
 { 
 
+	//double cameraExposureTime = 0.5;//相机曝光时间ms
+	//double gain_db = 16.9807;//增益 0-16.9807
+
+
 	double cameraExposureTime = 0.5;//相机曝光时间ms
 	double gain_db = 16.9807;//增益 0-16.9807
 
 	//平均1s1次 1h 3600
-	int countMax = 100; //拍摄最大数量
-	double temp = 51; //对焦位置
+	int countMax = 200; //拍摄最大数量
+	double temp = 45; //对焦位置
 	bool isShowImg = 0; //是否显示图像
 	bool isFusionImg = 0; //是否融合图像
 	bool isSaveImg = 1; //过程图是否存储
 	string filepath = "C:\\Users\\duanshipeng\\Pictures\\ImgFusionFilePath\\";
-	int t_sleep = 50; //串口返回时间后等待时间
+	int t_sleep = 100; //串口返回时间后等待时间
 	bool isChangeSleep = 0; //等待时间是否改变  查看线性变化
+	bool isChangeCount = 0; //对焦位置是否线性改变  查看线性变化
 	bool isUseLL = 1; //是否使用液体镜头  一般0为相机稳定性测试
+	double trueFocusPlace = 45.0;//47.0
 
 
 	//打开镜头串口 COM4
@@ -114,7 +120,11 @@ int main()
 	while (count < countMax)
 	{
 		//double temp = rand()%101;
-		temp = (count % 2 == 0) ? 100 : 0;//对焦位置
+		temp = (count % 2 == 0) ? trueFocusPlace : 0;//对焦位置
+		if (isChangeCount)//线性对焦位置
+		{
+			temp = ((double)count ) * 100.0 / (double)countMax;
+		}
 		if (isChangeSleep && count % 2 == 0)
 		{
 			t_sleep++;
